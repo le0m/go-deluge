@@ -20,6 +20,34 @@ import (
 	"github.com/gdm85/go-rencode"
 )
 
+type TrackerLastError struct {
+	Value    int64
+	Category string
+}
+
+// Tracker contains attributes of a torrent's trackers.
+type Tracker struct {
+	Url              string
+	Trackerid        string
+	Tier             int64
+	FailLimit        int64
+	Source           int64
+	Verified         bool
+	Message          string
+	LastError        TrackerLastError
+	NextAnnounce     int64
+	MinAnnounce      int64
+	ScrapeIncomplete int64
+	ScrapeComplete   int64
+	ScrapeDownloaded int64
+	Fails            int64
+	Updating         bool
+	StartSent        bool
+	CompleteSent     bool
+	Endpoints        []string
+	SendStats        bool
+}
+
 // TorrentStatus contains commonly used torrent attributes, as reported
 // by the deluge server.
 // The full list of potentially available attributes can be found here:
@@ -30,6 +58,9 @@ type TorrentStatus struct {
 	CompletedTime       int64   `rencode:"v2only"`
 	TimeAdded           float32 // most times an integer
 	LastSeenComplete    int64   `rencode:"v2only"`
+	TimeSinceDownload   int64   // default to -1
+	TimeSinceUpload     int64   // default to -1
+	TimeSinceTransfer   int64   // default to -1
 	DistributedCopies   float32
 	ETA                 float32 // most times an integer
 	Progress            float32 // max is 100
@@ -53,6 +84,7 @@ type TorrentStatus struct {
 	TotalPeers          int64
 	TotalSeeds          int64
 	TotalSize           int64
+	Tracker             string
 	TrackerHost         string
 	TrackerStatus       string
 	UploadPayloadRate   int64
@@ -61,6 +93,7 @@ type TorrentStatus struct {
 	Peers          []Peer
 	FilePriorities []int64
 	FileProgress   []float32
+	Trackers       []Tracker
 }
 
 type TorrentState string
@@ -86,6 +119,7 @@ var (
 	// See current list at https://github.com/deluge-torrent/deluge/blob/deluge-2.0.3/deluge/core/torrent.py#L1033-L1143
 	commonStatusKeys = []interface{}{
 		"state",
+		"tracker",
 		"tracker_host",
 		"tracker_status",
 		"next_announce",
@@ -109,11 +143,15 @@ var (
 		"file_priorities",
 		"file_progress",
 		"peers",
+		"trackers",
 		"is_seed",
 		"is_finished",
 		"active_time",
 		"seeding_time",
 		"time_added",
+		"time_since_download",
+		"time_since_upload",
+		"time_since_transfer",
 		"private",
 		"save_path", // supported by both v1 and v2
 	}

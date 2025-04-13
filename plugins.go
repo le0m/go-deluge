@@ -16,6 +16,8 @@ package deluge
 
 import (
 	"context"
+	"reflect"
+
 	"github.com/gdm85/go-rencode"
 )
 
@@ -42,9 +44,86 @@ func (c *Client) LabelPlugin(ctx context.Context) (*LabelPlugin, error) {
 	return nil, nil
 }
 
+type LabelOptions struct {
+	ApplyMax            bool
+	MaxDownloadSpeed    int
+	MaxUploadSpeed      int
+	MaxConnections      int
+	MaxUploadSlots      int
+	PrioritizeFirstLast bool
+	ApplyQueue          bool
+	IsAutoManaged       bool
+	StopAtRatio         bool
+	StopRatio           float32
+	RemoveAtRatio       bool
+	ApplyMoveCompleted  bool
+	MoveCompleted       bool
+	MoveCompletedPath   string
+	AutoAdd             bool
+	AutoAddTrackers     []string
+}
+
+func (o *LabelOptions) toDictionary() rencode.Dictionary {
+	var dict rencode.Dictionary
+	if o == nil {
+		return dict
+	}
+
+	v := reflect.ValueOf(*o)
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.IsNil() {
+			continue
+		}
+		if f.Kind() == reflect.Slice && f.Len() == 0 {
+			continue
+		}
+
+		name := rencode.ToSnakeCase(t.Field(i).Name)
+		dict.Add(name, reflect.Indirect(f).Interface())
+	}
+
+	return dict
+}
+
 // GetLabels returns a list of the available labels that can be assigned to torrents.
 func (p LabelPlugin) GetLabels(ctx context.Context) ([]string, error) {
 	return p.rpcWithStringsResult(nil, "label.get_labels")
+}
+
+// GetOptions returns the label options.
+func (p LabelPlugin) GetOptions(ctx context.Context, label string) (*LabelOptions, error) {
+	var args rencode.List
+	args.Add(label)
+
+	rd, err := p.rpcWithDictionaryResult(ctx, "label.get_options", args, rencode.Dictionary{})
+	if err != nil {
+		return nil, err
+	}
+
+	var options LabelOptions
+	err = rd.ToStruct(&options, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return &options, nil
+}
+
+// SetOptions sets the label options.
+func (p LabelPlugin) SetOptions(ctx context.Context, label string, options *LabelOptions) error {
+	var args rencode.List
+	args.Add(label, options.toDictionary())
+	resp, err := p.rpc(ctx, "label.set_options", args, rencode.Dictionary{})
+	if err != nil {
+		return err
+	}
+	if resp.IsError() {
+		return resp.RPCError
+	}
+
+	return nil
 }
 
 // SetTorrentLabel adds or replaces the label for the specified torrent.
