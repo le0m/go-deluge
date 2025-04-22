@@ -58,9 +58,9 @@ type TorrentStatus struct {
 	CompletedTime       int64   `rencode:"v2only"`
 	TimeAdded           float32 // most times an integer
 	LastSeenComplete    int64   `rencode:"v2only"`
-	TimeSinceDownload   int64   // default to -1
-	TimeSinceUpload     int64   // default to -1
-	TimeSinceTransfer   int64   // default to -1
+	TimeSinceDownload   int64   `rencode:"v2only"`
+	TimeSinceUpload     int64   `rencode:"v2only"`
+	TimeSinceTransfer   int64   `rencode:"v2only"`
 	DistributedCopies   float32
 	ETA                 float32 // most times an integer
 	Progress            float32 // max is 100
